@@ -1,0 +1,45 @@
+#import "Windows";
+cmt : u64;
+res : u64;
+
+reserve :: (size : u64) -> *void {
+	out := VirtualAlloc(xx 0, size, MEM_RESERVE, PAGE_READWRITE);
+	assert(xx out);
+	return xx out;
+}
+
+commit :: (ptr : *void, size : u64) -> bool {
+	out := VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
+	assert(xx out);
+	return xx out;
+}
+
+decommit :: (ptr : *void, size : u64) {
+	VirtualFree(ptr, size, MEM_DECOMMIT);
+}
+
+release :: (ptr : *void, size : u64) {
+	VirtualFree(ptr, 0, MEM_RELEASE);
+}
+
+get_page_size :: () -> u64 {
+	sysinfo : SYSTEM_INFO;
+	GetSystemInfo(*sysinfo);
+	return sysinfo.dwPageSize;
+}
+
+get_perf_counter :: () -> s64 {
+	counter : s64;
+	QueryPerformanceCounter(*counter);
+	return counter;
+}
+
+get_perf_freq :: () -> s64 {
+	frequency : s64;
+	QueryPerformanceFrequency(*frequency);
+	return frequency;
+}
+
+sleep :: (ms : s32) {
+	Sleep(ms);
+}

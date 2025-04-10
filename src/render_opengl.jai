@@ -1,10 +1,12 @@
 VF_Shaders :: enum {
 	Quad;
+	Light;
 	Count;
 }
 
 Instance_Buffers :: enum {
 	Quad;
+	Light;
 	Count;
 }
 
@@ -17,7 +19,7 @@ r_state : struct {
 	white_tex : Image;
 }
 
-vf_shader_paths :[VF_Shaders.Count]string: .["triangle"];
+vf_shader_paths :[VF_Shaders.Count]string: .["triangle", "light"];
 
 make_ssbo :: (size : u64) -> GLuint {
 	ssbo : GLuint;
@@ -169,47 +171,7 @@ render_init :: () {
 	r_state.white_tex = image(white_bmp);
 }
 
-RectF32 :: struct {
-	min : Vector2;
-	max : Vector2;
-};
-
-Quad :: struct {
-	model : Matrix4;
-	color : Vector4;
-	src : RectF32;
-	tex_id : u64;
-	pad : u64;
-}
-
-quads : struct {
-	data : [1024]Quad;
-	count : int;
-}
-
-push_quad :: (pos : Vector3, rot : Vector3, size : Vector2, color : Vector4, image : Image, src : RectF32 = .{.{0, 0}, .{1, 1}}) {
-	quad := quads.data.data + quads.count;
-	
-	mat := Matrix4_Identity;
-	
-	yaw : Quaternion;
-	set_from_axis_and_angle (*yaw, 0, -1, 0, rot.x);
-	pitch : Quaternion;
-	set_from_axis_and_angle (*pitch, -1, 0, 0, rot.y);
-	rotation := yaw * pitch;
-	
-	mat = translate(mat, pos);
-	mat = rotate(mat, rotation);
-	mat = scale(mat, .{size.x, size.y, 1});
-	
-	quad.model = mat;
-	quad.color = color;
-	quad.tex_id = image.resident;
-	quad.src = src;
-	quads.count += 1;
-}
-
-render_submit :: () {
+render_submit :: (passes : Pass_List) {
 	win_size := get_window_size(the_window);
 	
 	glViewport(0, 0, xx win_size.x, xx win_size.y);
@@ -217,27 +179,52 @@ render_submit :: () {
 	glEnable(GL_DEPTH_TEST);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
-	shader := r_state.vf_shaders[VF_Shaders.Quad];
-	buffer := r_state.inst_buffers[Instance_Buffers.Quad];
-	
-	glUseProgram(shader);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
-	
-	ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, size_of(Quad) * quads.count, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
-	
-	memcpy(ssbo_data, quads.data.data, size_of(Quad) * quads.count);
-	
-	glUnmapNamedBuffer(buffer);
-	
-	proj := Matrix4_Identity;
-	proj = make_projection_matrix(45 * PI / 180.0, win_size.x / (cast(float) win_size.y), 0.001, 1000);
-	
-	proj_loc := glGetUniformLocation(shader, "u_proj");
-	view_loc := glGetUniformLocation(shader, "u_view");
-	
-	glUniformMatrix4fv(view_loc, 1, GL_TRUE, *camera.view_matrix.coef[0][0]);
-	glUniformMatrix4fv(proj_loc, 1, GL_TRUE, *proj.coef[0][0]);
-	
-	glDrawArraysInstanced(GL_TRIANGLES, 0, 6, xx quads.count);
-	quads.count = 0;
+	// passes
+	{
+		pass := passes.first;
+		while pass {
+			defer pass = pass.next;
+			
+			if pass.kind == {
+				
+				case .Light; #through;
+				case .Quad;
+				
+				shader := r_state.vf_shaders[VF_Shaders.Quad];
+				buffer := r_state.inst_buffers[Instance_Buffers.Quad];
+				
+				if pass.kind == .Light {
+					shader = r_state.vf_shaders[VF_Shaders.Light];
+					buffer = r_state.inst_buffers[Instance_Buffers.Light];
+				}
+				
+				glUseProgram(shader);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffer);
+				
+				proj := Matrix4_Identity;
+				proj = make_projection_matrix(60 * PI / 180.0, win_size.x / (cast(float) win_size.y), 0.001, 1000);
+				
+				proj_loc := glGetUniformLocation(shader, "u_proj");
+				view_loc := glGetUniformLocation(shader, "u_view");
+				
+				glUniformMatrix4fv(view_loc, 1, GL_TRUE, *camera.view_matrix.coef[0][0]);
+				glUniformMatrix4fv(proj_loc, 1, GL_TRUE, *proj.coef[0][0]);
+				
+				batches := pass.batches;
+				batch := batches.first;
+				while batch	{
+					ssbo_data : *u8 = glMapNamedBufferRange(buffer, 0, batch.size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+					
+					memcpy(ssbo_data, batch.base, batch.size);
+					
+					glUnmapNamedBuffer(buffer);
+					
+					glDrawArraysInstanced(GL_TRIANGLES, 0, 6, batch.count);
+					
+					batch = batch.next;
+				}
+				
+			}
+		}
+	}
 }

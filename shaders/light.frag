@@ -15,10 +15,6 @@ void main()
 		discard;
 	}
 	
-	//float ambient_str = 0.1;
-	float ambient_str = 0.8;
-	vec4 ambient = ambient_str * a_color;
-	
-	vec4 result = ambient * a_color * tex_col;
-	out_color = result;
+	//out_color = tex_col * a_color;
+	out_color = vec4(1, 1, 1, 1);
 }

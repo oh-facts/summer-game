@@ -14,36 +14,14 @@
 #import "Windows";
 #import "Math";
 #import "GL" (ENABLE_ALL_EXTENSIONS = true);
+#import "jai_cgltf";
+
 #load "camera.jai";
 #load "render_opengl.jai";
-
-COLOR_WHITE :: Vector4.{1, 1, 1, 1};
-COLOR_BLACK :: Vector4.{0, 0, 0, 1};
-
-COLOR_RED :: Vector4.{1, 0, 0, 1};
-COLOR_GREEN :: Vector4.{0, 1, 0, 1};
-COLOR_BLUE :: Vector4.{0, 0, 1, 1};
-COLOR_YELLOW :: Vector4.{1, 1, 0, 1};
-COLOR_CYAN :: Vector4.{0, 1, 1, 1};
-COLOR_MAGENTA :: Vector4.{1, 0, 1, 1};
-
-COLOR_ORANGE :: Vector4.{0.79, 0.33, 0, 1};
-
-KB :: (v : u64) -> u64 #expand {
-	return v * 1024;
-}
-
-MB :: (v : u64) -> u64 #expand {
-	return KB(v) * 1024;
-}
-
-GB :: (v : u64) -> u64 #expand {
-	return MB(v) * 1024;
-}
-
-TB :: (v : u64) -> u64 #expand {
-	return GB(v) * 1024;
-}
+#load "base.jai";
+#load "os_win32.jai";
+#load "mesh.jai";
+#load "render.jai";
 
 counter : float;
 //counter += delta;
@@ -69,12 +47,18 @@ main :: () {
 	
 	SetProcessDPIAware();
 	
-	the_window = create_window(960, 540, "Window Creation");
+	the_window = create_window(960, 540, "The Sad Debugger");
 	
 	exe_folder = path_strip_filename(get_path_of_running_executable());
 	art_folder = join(exe_folder, "../art");
 	
 	render_init();
+	
+	// load 3d model
+	{
+		arena := arena_init();
+		gltf_loadMesh(arena, "b");
+	}
 	
 	bmp_tex, grass_tex, tree_tex : Image;
 	
@@ -133,6 +117,8 @@ main :: () {
 		
 		update_flying_camera(*camera, delta);
 		
+		passes : Pass_List;
+		
 		// tree
 		{
 			for x : -5 .. 5 {
@@ -142,8 +128,8 @@ main :: () {
 					pos.x += x;
 					pos.z += y;
 					
-					push_quad(pos, .{}, .{1, 1}, COLOR_WHITE, tree_tex);
-					push_quad(pos, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_WHITE, tree_tex);
+					push_quad(*passes, pos, .{}, .{1, 1}, COLOR_WHITE, tree_tex);
+					push_quad(*passes, pos, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_WHITE, tree_tex);
 				}
 			}
 		}
@@ -151,20 +137,24 @@ main :: () {
 		// house 
 		{
 			// walls 1
-			push_quad(.{0.5, 0.5, 0.5}, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_RED, r_state.white_tex);
-			push_quad(.{-0.5, 0.5, 0.5}, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_BLUE, r_state.white_tex);
+			
+			// this wall is a light
+			//push_light(*passes, .{0.5, 0.5, 0.5}, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_RED, r_state.white_tex);
+			push_quad(*passes, .{0.5, 0.5, 0.5}, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_RED, r_state.white_tex);
+			
+			push_quad(*passes, .{-0.5, 0.5, 0.5}, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_BLUE, r_state.white_tex);
 			
 			// walls 2
-			push_quad(.{0, 0.5, 0}, .{}, .{1, 1}, COLOR_ORANGE, r_state.white_tex);
-			push_quad(.{0, 0.5, 1}, .{}, .{1, 1}, COLOR_MAGENTA, r_state.white_tex);
+			push_quad(*passes, .{0, 0.5, 0}, .{}, .{1, 1}, COLOR_ORANGE, r_state.white_tex);
+			push_quad(*passes, .{0, 0.5, 1}, .{}, .{1, 1}, COLOR_MAGENTA, r_state.white_tex);
 		}
 		
 		// terrain
 		{
-			push_quad(.{0, 0, 0}, .{0, 90 * PI/180, 0}, .{10, 10}, .{1, 1, 1, 1}, grass_tex, .{.{0, 0}, .{10, 10}});
+			push_quad(*passes, .{0, 0, 0}, .{0, 90 * PI/180, 0}, .{10, 10}, .{1, 1, 1, 1}, grass_tex, .{.{0, 0}, .{10, 10}});
 		}
 		
-		render_submit();
+		render_submit(passes);
 		dc := GetDC(the_window);
 		SwapBuffers(dc);
 		
@@ -174,59 +164,6 @@ main :: () {
 	}
 	
 	print("quit safely\n");
-}
-
-Bitmap :: struct {
-	data : *void;
-	w : s32;
-	h : s32;
-	n : s32;
-}
-
-bitmap_dim :: (data : string) -> s32, s32 {
-	comp : s32;
-	
-	x, y : s32;
-	stbi_info_from_memory(data.data, xx data.count, *x, *y, *comp);
-	
-	return x, y;
-}
-
-bitmap :: (data : string) -> Bitmap {
-	out : Bitmap;
-	//stbi_set_flip_vertically_on_load(1);
-	
-	w, h, n : s32;
-	
-	bytes := stbi_load_from_memory(data.data, xx data.count, *w, *h, *n, 4);
-	
-	out.w = w;
-	out.h = h;
-	out.n = 4;
-	out.data = bytes;
-	
-	return out;
-}
-
-bitmap_free :: (bmp : *Bitmap) {
-	stbi_image_free(bmp.data);
-}
-
-Tex_Params :: enum {
-	Linear;
-	Nearest;
-}
-
-get_perf_counter :: () -> s64 {
-	counter : s64;
-	QueryPerformanceCounter(*counter);
-	return counter;
-}
-
-get_perf_freq :: () -> s64 {
-	frequency : s64;
-	QueryPerformanceFrequency(*frequency);
-	return frequency;
 }
 
 mouse_delta : Vector2;
@@ -252,19 +189,3 @@ toggle_cursor :: (show : s32) {
 		while (count >= 0) count = ShowCursor(0);
 	}
 }
-
-/*
-		// model
-		{
-			euler : Vector2;
-			euler.x = counter;
-			//euler.y = counter;
-			yaw : Quaternion;
-			set_from_axis_and_angle (*yaw, 0, -1, 0, euler.x);
-			pitch : Quaternion;
-			set_from_axis_and_angle (*pitch, -1, 0, 0, euler.y);
-			rotation := yaw * pitch;
-			
-			model = rotate(model, rotation);
-		}
-		*/
