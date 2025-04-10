@@ -23,6 +23,7 @@ builds/
 yk
 *.lib
 !glfw3.lib
+!cgltf.lib
 *.spv
 *.ilk
 compile_commands.json
