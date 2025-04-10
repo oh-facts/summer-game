@@ -1,0 +1,97 @@
+version(2);
+project_name = "the sad debugger";
+
+indent_width = "2";
+default_tab_width = "2";
+indent_with_tabs = "true";
+
+patterns =
+{
+	"*.c",
+	"*.jai",
+	"*.cpp",
+	"*.h",
+	"*.bat",
+	"*.sh",
+	"*.4coder",
+	"*.glsl",
+};
+
+user_name = "mizu";
+
+commands =
+{
+	.build =
+	{
+		.win = "jai first.jai",
+		.linux = "",
+		.out = "*compilation*",
+		.footer_panel = true,
+		.save_dirty_files = true,
+		.cursor_at_end = false,
+	},
+	.run=
+	{
+		.win = ".build\winter",
+		.linux = "",
+		.out = "*compilation*",
+		.footer_panel = true,
+		.save_dirty_files = true,
+		.cursor_at_end = false,
+	},
+	.clean =
+	{
+		.win = "jai first.jai - clean",
+		.linux = "",
+		.out = "*compilation*",
+		.footer_panel = true,
+		.save_dirty_files = true,
+		.cursor_at_end = false,
+	},
+	.cloc = 
+	{
+		.win = "build cloc",
+		.linux = "",
+		.out = "*cloc*",
+		.footer_panel = false,
+	},
+	.build_platform_release =
+	{
+		.win = "build release platform",
+		.linux = "",
+		.out = "*compilation*",
+		.footer_panel = true,
+		.save_dirty_files = true,
+		.cursor_at_end = false,
+	},
+	.build_app_release=
+	{
+		.win = "build release app",
+		.linux = "",
+		.out = "*compilation*",
+		.footer_panel = true,
+		.save_dirty_files = true,
+		.cursor_at_end = false,
+	},
+	.metacr = 
+	{
+		.win = "build debug metacr",
+		.linux = "",
+		.out = "*compilation*",
+		.footer_panel = true,
+		.save_dirty_files = true,
+		.cursor_at_end = false,
+	}
+};
+
+fkey_command =
+{
+	.F1 = "build",
+	.F2 = "build_app",
+	.F3 = "run",
+	.F4 = "clean",
+	.F5 = "build_platform_release",
+	.F6 = "build_app_release",
+	.F10 = "metacr",
+	
+};
