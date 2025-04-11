@@ -256,6 +256,11 @@ render_submit :: (passes : Pass_List) {
 				}
 				
 				case .GLTF_Scene;
+				
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_BACK);
+				glFrontFace(GL_CCW);
+				
 				shader := r_state.vf_shaders[VF_Shaders.Mesh];
 				
 				glUseProgram(shader);
@@ -266,6 +271,7 @@ render_submit :: (passes : Pass_List) {
 				proj_loc := glGetUniformLocation(shader, "u_proj");
 				view_loc := glGetUniformLocation(shader, "u_view");
 				model_loc := glGetUniformLocation(shader, "u_model");
+				image_loc := glGetUniformLocation(shader, "u_base_tex_id");
 				
 				glUniformMatrix4fv(view_loc, 1, GL_TRUE, *camera.view_matrix.coef[0][0]);
 				glUniformMatrix4fv(proj_loc, 1, GL_TRUE, *proj.coef[0][0]);
@@ -282,17 +288,23 @@ render_submit :: (passes : Pass_List) {
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vertex_buffer);
 						
 						glUniformMatrix4fv(model_loc, 1, GL_TRUE, *mesh.transform.coef[0][0]);
-						
 						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
 						
 						for 0 .. mesh.num_primitives - 1 {
 							prim := mesh.primitives + it;
+							
+							base_tex_id := scene.gpu_textures[prim.base_tex_index].resident;
+							
+							l, r := uvec2_from_u64(base_tex_id);
+							
+							glUniform2ui(image_loc, l, r);
 							
 							glDrawElements(GL_TRIANGLES, prim.count, GL_UNSIGNED_INT, xx (prim.start * size_of(u32)));
 						}
 					}
 				}
 				//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+				glDisable(GL_CULL_FACE);
 			}
 		}
 	}

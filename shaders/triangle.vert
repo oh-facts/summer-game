@@ -51,6 +51,7 @@ void main()
 	vec4 pos = vec4(v.pos, 0, 1);
 	
 	a_uv = v.uv;
+	a_uv.y = 1 - a_uv.y;
 	a_tex_id = obj.tex_id;
 	a_color = obj.color;
 	gl_Position = u_proj * u_view * obj.model * pos;

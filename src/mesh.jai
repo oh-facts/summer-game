@@ -215,6 +215,8 @@ gltf_loadMesh :: (arena : *Arena, filename : string) -> GLTF_Scene {
 	
 	it : GLTF_It;
 	
+	foldername := path_strip_filename(filename);
+	
 	options : cgltf_options;
 	data : *cgltf_data;
 	
@@ -227,18 +229,31 @@ gltf_loadMesh :: (arena : *Arena, filename : string) -> GLTF_Scene {
 	}
 	
 	// load textures
-	/*
+	
 	out.num_textures = data.textures_count;
 	out.textures = push_array(arena, Bitmap, data.textures_count);
 	
 	for i : 0 .. data.textures_count - 1 {
-		uri_str := tprint("%", data.textures[i].image.uri);
 		
-		texture_abs_path := tprint("%0%",art_folder, uri_str);
+		uri_str : string;
+		uri_str.data = data.textures[i].image.uri;
 		
-		out.textures[i] = bitmap(texture_abs_path);
+		c := uri_str.data[0];
+		index : int;
+		
+		while c != #char "\0" {
+			c = uri_str.data[index];
+			index += 1;
+		}
+		
+		uri_str.count = index;
+		
+		texture_abs_path := tprint("%0% ",foldername, uri_str);
+		
+		texture_file_data := read_entire_file(texture_abs_path);
+		
+		out.textures[i] = bitmap(texture_file_data);
 	}
-	*/
 	
 	// load meshes
 	out.num_meshes = data.meshes_count;
@@ -266,44 +281,16 @@ gltf_loadMesh :: (arena : *Arena, filename : string) -> GLTF_Scene {
 }
 
 gltf_upload :: (arena : *Arena, scene : *GLTF_Scene) {
-	//scene.gpu_textures = push_array(arena, Image, scene.num_textures);
-	//for i : 0 .. scene.num_textures - 1 {
-	//scene.gpu_textures[i] = image(scene.textures[i]);
-	//}
+	scene.gpu_textures = push_array(arena, Image, scene.num_textures);
+	for i : 0 .. scene.num_textures - 1 {
+		scene.gpu_textures[i] = image(scene.textures[i]);
+	}
 	
 	for i : 0 .. scene.num_meshes - 1 {
 		mesh := scene.meshes + i;
 		mesh.buffer = mesh_buffer(mesh.vertices, xx mesh.num_vertices, mesh.indices, xx mesh.num_indices);
 	}
 }
-
-/*
-gltf_draw :: (batch : *R_Batch, transform : Matrix4, scene : *GLTF_Scene) {
-	// covert to linear since our frame buffer is srgb
-	//color.x = pow(color.x, 2.2);
-	//color.y = pow(color.y, 2.2);
-	//color.z = pow(color.z, 2.2);
-	
-	for i : 0 .. scene.num_meshes - 1 {
-		mesh := scene.meshes + i;
-		r_beginMesh(batch, mesh.num_primitives, mesh.gpu_buffer);
-		
-		for j : 0 .. mesh.num_primitives - 1 {
-			primitive := mesh.primitives + j;
-			
-			/*
-						base_tex := scene>gpu_textures[primitive->base_tex_index];
-						
-						if(!base_tex.u64[0])
-						{
-							base_tex = null_handle;
-						}
-						*/
-r_pushMesh(batch, primitive.start, primitive.count, mesh.transform * transform);
-}
-}
-}
-*/
 
 cgltf_texture_index :: (data : *cgltf_data, object : *cgltf_texture) -> cgltf_size {
 	//assert(object && (cgltf_size)(object - data->textures) < data->textures_count);

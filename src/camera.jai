@@ -39,7 +39,9 @@ update_flying_camera :: (using camera : *Camera, delta_time : float)
 		move_input = rotate (unit_vector (move_input), rotation);
 	}
 	position += move_input * move_speed;
-	position.y = 0.15;
+	
+	//position.y = 0.15;
+	
 	rotation_input = lerp (rotation_input, mouse_delta, ROTATION_SMOOTHING);
 	delta := rotation_input * ROTATION_SPEED;
 	euler_angles.x += delta.x * PI / 180.0;

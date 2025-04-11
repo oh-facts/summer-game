@@ -61,13 +61,13 @@ main :: () {
 		//filename := tprint("%/%", art_folder, "duck/model.gltf ");
 		//filename := tprint("%/%", art_folder, "sponza/Sponza.gltf ");
 		
-		filename := tprint("%/%", art_folder, "aos/model.gltf ");
+		filename := tprint("%/%", art_folder, "aos/model.gltf");
 		thing = gltf_loadMesh(arena, filename);
 		gltf_upload(arena, *thing);
 	}
 	
 	{
-		filename := tprint("%/%", art_folder, "sponza/Sponza.gltf ");
+		filename := tprint("%/%", art_folder, "sponza/Sponza.gltf");
 		sponza = gltf_loadMesh(arena, filename);
 		gltf_upload(arena, *sponza);
 	}
