@@ -26,8 +26,7 @@ Mesh :: struct {
 	vertices : *Vertex;
 	num_vertices : u64;
 	
-	v_buffer : u32;
-	i_buffer : u32;
+	buffer : Mesh_Buffer;
 	
 	transform : Matrix4;
 };
@@ -171,7 +170,7 @@ gltf_traverseNode :: (it : *GLTF_It, node : *cgltf_node) {
 		
 		for i : 0 .. 4 - 1 {
 			for j : 0 .. 4 - 1 {
-				mesh.transform.coef[i][j] = mat[i * 4 + j];
+				mesh.transform.coef[j][i] = mat[i * 4 + j];
 			}
 		}
 		
@@ -211,15 +210,13 @@ gltf_print :: (scene : *GLTF_Scene) {
 	}
 }
 
-gltf_loadMesh :: (arena : *Arena, filepath : string) -> GLTF_Scene {
+gltf_loadMesh :: (arena : *Arena, filename : string) -> GLTF_Scene {
 	out : GLTF_Scene;
 	
 	it : GLTF_It;
 	
 	options : cgltf_options;
 	data : *cgltf_data;
-	
-	filename := tprint("%/%", art_folder, "aos/model.gltf ");
 	
 	if cgltf_parse_file(*options, filename.data, *data) != .cgltf_result_success {
 		assert(false, "couldn't find %", filename);
@@ -269,14 +266,14 @@ gltf_loadMesh :: (arena : *Arena, filepath : string) -> GLTF_Scene {
 }
 
 gltf_upload :: (arena : *Arena, scene : *GLTF_Scene) {
-	scene.gpu_textures = push_array(arena, Image, scene.num_textures);
-	for i : 0 .. scene.num_textures - 1 {
-		scene.gpu_textures[i] = image(scene.textures[i]);
-	}
+	//scene.gpu_textures = push_array(arena, Image, scene.num_textures);
+	//for i : 0 .. scene.num_textures - 1 {
+	//scene.gpu_textures[i] = image(scene.textures[i]);
+	//}
 	
 	for i : 0 .. scene.num_meshes - 1 {
 		mesh := scene.meshes + i;
-		//mesh.gpu_buffer = r_meshBuffer(mesh->vertices, mesh->num_vertices, mesh->indices, mesh->num_indices);
+		mesh.buffer = mesh_buffer(mesh.vertices, xx mesh.num_vertices, mesh.indices, xx mesh.num_indices);
 	}
 }
 

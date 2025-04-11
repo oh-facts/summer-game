@@ -55,9 +55,21 @@ main :: () {
 	render_init();
 	
 	// load 3d model
+	arena := arena_init();
+	thing, sponza: GLTF_Scene;
 	{
-		arena := arena_init();
-		gltf_loadMesh(arena, "b");
+		//filename := tprint("%/%", art_folder, "duck/model.gltf ");
+		//filename := tprint("%/%", art_folder, "sponza/Sponza.gltf ");
+		
+		filename := tprint("%/%", art_folder, "aos/model.gltf ");
+		thing = gltf_loadMesh(arena, filename);
+		gltf_upload(arena, *thing);
+	}
+	
+	{
+		filename := tprint("%/%", art_folder, "sponza/Sponza.gltf ");
+		sponza = gltf_loadMesh(arena, filename);
+		gltf_upload(arena, *sponza);
 	}
 	
 	bmp_tex, grass_tex, tree_tex : Image;
@@ -154,6 +166,11 @@ main :: () {
 			push_quad(*passes, .{0, 0, 0}, .{0, 90 * PI/180, 0}, .{10, 10}, .{1, 1, 1, 1}, grass_tex, .{.{0, 0}, .{10, 10}});
 		}
 		
+		{
+			push_gltf_scene(*passes, thing);
+			push_gltf_scene(*passes, sponza);
+		}
+		
 		render_submit(passes);
 		dc := GetDC(the_window);
 		SwapBuffers(dc);
@@ -161,6 +178,8 @@ main :: () {
 		end := get_perf_counter();
 		time_elapsed = (end - start) / (freq * 1.);
 		delta = time_elapsed - time_since_last;
+		
+		reset_temporary_storage();
 	}
 	
 	print("quit safely\n");

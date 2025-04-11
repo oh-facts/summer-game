@@ -38,13 +38,15 @@ Batch_List :: struct {
 Pass_Kind :: enum {
 	Quad;
 	Light;
+	GLTF_Scene;
 }
 
 Pass :: struct {
 	next : *Pass;
 	kind : Pass_Kind;
 	batches : Batch_List;
-	
+	scenes : [4]GLTF_Scene;
+	scene_count : int;
 	view : Matrix4;
 	proj : Matrix4;
 }
@@ -174,4 +176,19 @@ push_quad :: (list : *Pass_List, pos : Vector3, rot : Vector3, size : Vector2, c
 
 push_light :: (list : *Pass_List, pos : Vector3, rot : Vector3, size : Vector2, color : Vector4, image : Image, src : RectF32 = .{.{0, 0}, .{1, 1}}) {	
 	push_quad_impl(.Light, list, pos, rot, size, color, image, src);
+}
+
+push_gltf_scene :: (list : *Pass_List, scene : GLTF_Scene) {
+	pass := list.last;
+	
+	if !pass || pass.kind != .GLTF_Scene || (list.gen != list.last_gen){
+		pass = push_pass(list, .GLTF_Scene);
+		
+		// set state params
+		//pass.scissor = list.scissor_stack.top.v;
+		list.last_gen = list.gen;
+	}
+	
+	pass.scenes[pass.scene_count] = scene;
+	pass.scene_count += 1;
 }

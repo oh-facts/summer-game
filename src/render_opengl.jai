@@ -1,12 +1,12 @@
 VF_Shaders :: enum {
 	Quad;
 	Light;
+	Mesh;
 	Count;
 }
 
 Instance_Buffers :: enum {
 	Quad;
-	Light;
 	Count;
 }
 
@@ -19,7 +19,7 @@ r_state : struct {
 	white_tex : Image;
 }
 
-vf_shader_paths :[VF_Shaders.Count]string: .["triangle", "light"];
+vf_shader_paths :[VF_Shaders.Count]string: .["triangle", "light", "mesh"];
 
 make_ssbo :: (size : u64) -> GLuint {
 	ssbo : GLuint;
@@ -108,6 +108,11 @@ Image :: struct {
 	h : u32;
 }
 
+Mesh_Buffer :: struct {
+	vertex_buffer : GLuint;
+	index_buffer : GLuint;
+}
+
 image :: (bmp : Bitmap, params := Tex_Params.Nearest) -> Image {
 	
 	id : GLuint;
@@ -141,6 +146,33 @@ image :: (bmp : Bitmap, params := Tex_Params.Nearest) -> Image {
 	out.resident = resident;
 	out.w = xx bmp.w;
 	out.h = xx bmp.h;
+	
+	return out;
+}
+
+mesh_buffer :: (vertices : *Vertex, num_vertices : u32, indices : *u32, num_indices : u32) -> Mesh_Buffer {
+	out : Mesh_Buffer;
+	
+	// vertex buffer
+	{
+		vbo : GLuint;
+		size := size_of(Vertex) * num_vertices;
+		
+		glCreateBuffers(1, *vbo);
+		glNamedBufferData(vbo, xx size, vertices, GL_STATIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, vbo);
+		out.vertex_buffer = vbo;
+	}
+	
+	// index buffer
+	{
+		ebo : GLuint;
+		size := size_of(u32) * num_indices;
+		
+		glCreateBuffers(1, *ebo);
+		glNamedBufferData(ebo, size, indices, GL_STATIC_DRAW);
+		out.index_buffer = ebo;
+	}
 	
 	return out;
 }
@@ -195,7 +227,6 @@ render_submit :: (passes : Pass_List) {
 				
 				if pass.kind == .Light {
 					shader = r_state.vf_shaders[VF_Shaders.Light];
-					buffer = r_state.inst_buffers[Instance_Buffers.Light];
 				}
 				
 				glUseProgram(shader);
@@ -224,6 +255,44 @@ render_submit :: (passes : Pass_List) {
 					batch = batch.next;
 				}
 				
+				case .GLTF_Scene;
+				shader := r_state.vf_shaders[VF_Shaders.Mesh];
+				
+				glUseProgram(shader);
+				
+				proj := Matrix4_Identity;
+				proj = make_projection_matrix(60 * PI / 180.0, win_size.x / (cast(float) win_size.y), 0.001, 1000);
+				
+				proj_loc := glGetUniformLocation(shader, "u_proj");
+				view_loc := glGetUniformLocation(shader, "u_view");
+				model_loc := glGetUniformLocation(shader, "u_model");
+				
+				glUniformMatrix4fv(view_loc, 1, GL_TRUE, *camera.view_matrix.coef[0][0]);
+				glUniformMatrix4fv(proj_loc, 1, GL_TRUE, *proj.coef[0][0]);
+				
+				for 0 .. pass.scene_count - 1 {
+					scene := pass.scenes[it];
+					
+					for 0 .. scene.num_meshes - 1 {
+						mesh := scene.meshes + it;
+						
+						vertex_buffer := mesh.buffer.vertex_buffer;
+						index_buffer := mesh.buffer.index_buffer;
+						
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vertex_buffer);
+						
+						glUniformMatrix4fv(model_loc, 1, GL_TRUE, *mesh.transform.coef[0][0]);
+						
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+						
+						for 0 .. mesh.num_primitives - 1 {
+							prim := mesh.primitives + it;
+							
+							glDrawElements(GL_TRIANGLES, prim.count, GL_UNSIGNED_INT, xx (prim.start * size_of(u32)));
+						}
+					}
+				}
+				//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 			}
 		}
 	}
