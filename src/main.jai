@@ -24,7 +24,6 @@
 #load "render.jai";
 
 counter : float;
-//counter += delta;
 
 the_window: Window_Type;
 
@@ -56,23 +55,27 @@ main :: () {
 	
 	// load 3d model
 	arena := arena_init();
-	thing, sponza: GLTF_Scene;
+	forest, thing, sponza: GLTF_Scene;
 	{
 		//filename := tprint("%/%", art_folder, "duck/model.gltf ");
 		//filename := tprint("%/%", art_folder, "sponza/Sponza.gltf ");
 		
-		filename := tprint("%/%", art_folder, "aos/model.gltf");
+		filename := tprint("%/%", art_folder, "aos/model2.gltf");
 		thing = gltf_loadMesh(arena, filename);
 		gltf_upload(arena, *thing);
 	}
 	
 	{
+		filename := tprint("%/%", art_folder, "forest/model.gltf");
+		forest = gltf_loadMesh(arena, filename);
+		gltf_upload(arena, *forest);
+	}
+	
+	if 0 {
 		filename := tprint("%/%", art_folder, "sponza/Sponza.gltf");
 		sponza = gltf_loadMesh(arena, filename);
 		gltf_upload(arena, *sponza);
 	}
-	
-	bmp_tex, grass_tex, tree_tex : Image;
 	
 	{
 		filename := tprint("%/%", art_folder, "psy_man.png");
@@ -105,6 +108,8 @@ main :: () {
 	
 	quit := false;
 	while !quit {
+		counter += delta;
+		
 		time_since_last := time_elapsed;
 		
 		update_window_events();
@@ -121,6 +126,13 @@ main :: () {
 			}
 		}
 		
+		if g_control_camera {
+			x, y, w, h := get_dimensions (the_window, false);
+			user32 :: #system_library "User32";
+			SetCursorPos :: (x : s32, y : s32) -> s32 #foreign user32;
+			SetCursorPos (w / 2, h / 2);
+		}
+		
 		if is_key_pressed(.TAB) {
 			g_control_camera = !g_control_camera;
 			cursor_hidden = !cursor_hidden;
@@ -131,44 +143,37 @@ main :: () {
 		
 		passes : Pass_List;
 		
-		// tree
 		{
-			for x : -5 .. 5 {
-				for y : -5 .. 5 {
-					
-					pos := Vector3.{0, 0.5, 0};
-					pos.x += x;
-					pos.z += y;
-					
-					push_quad(*passes, pos, .{}, .{1, 1}, COLOR_WHITE, tree_tex);
-					push_quad(*passes, pos, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_WHITE, tree_tex);
-				}
+			draw_tree(*passes, .{1.6, 0.65, -1});
+		}
+		
+		{
+			{
+				model := Matrix4_Identity;
+				
+				euler : Vector2;
+				euler.x = counter;
+				//euler.y = counter;
+				yaw : Quaternion;
+				set_from_axis_and_angle (*yaw, 0, -1, 0, euler.x);
+				pitch : Quaternion;
+				set_from_axis_and_angle (*pitch, -1, 0, 0, euler.y);
+				rotation := yaw * pitch;
+				
+				model = translate(model, .{1.05, 0.12, -0.75});
+				model = rotate(model, rotation);
+				model = scale(model, .{0.08, 0.08, 0.08});
+				thing.xform = model;
 			}
-		}
-		
-		// house 
-		{
-			// walls 1
 			
-			// this wall is a light
-			//push_light(*passes, .{0.5, 0.5, 0.5}, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_RED, r_state.white_tex);
-			push_quad(*passes, .{0.5, 0.5, 0.5}, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_RED, r_state.white_tex);
-			
-			push_quad(*passes, .{-0.5, 0.5, 0.5}, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_BLUE, r_state.white_tex);
-			
-			// walls 2
-			push_quad(*passes, .{0, 0.5, 0}, .{}, .{1, 1}, COLOR_ORANGE, r_state.white_tex);
-			push_quad(*passes, .{0, 0.5, 1}, .{}, .{1, 1}, COLOR_MAGENTA, r_state.white_tex);
-		}
-		
-		// terrain
-		{
-			push_quad(*passes, .{0, 0, 0}, .{0, 90 * PI/180, 0}, .{10, 10}, .{1, 1, 1, 1}, grass_tex, .{.{0, 0}, .{10, 10}});
-		}
-		
-		{
 			push_gltf_scene(*passes, thing);
-			push_gltf_scene(*passes, sponza);
+			
+			
+			{
+				forest.xform = scale(Matrix4_Identity, .{0.5, 0.5, 0.5});
+				push_gltf_scene(*passes, forest);
+			}
+			//push_gltf_scene(*passes, sponza);
 		}
 		
 		render_submit(passes);
@@ -207,4 +212,11 @@ toggle_cursor :: (show : s32) {
 	} else {
 		while (count >= 0) count = ShowCursor(0);
 	}
+} 
+
+bmp_tex, grass_tex, tree_tex : Image;
+
+draw_tree :: (passes : *Pass_List, pos : Vector3) {
+	push_quad(passes, pos, .{}, .{1, 1}, COLOR_WHITE, tree_tex);
+	push_quad(passes, pos, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_WHITE, tree_tex);
 }

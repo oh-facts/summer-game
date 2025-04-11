@@ -17,6 +17,7 @@ struct Vertex
 
 out vec2 a_uv;
 out vec3 a_normal;
+out vec3 a_frag_pos;
 
 layout (std430, binding = 1) buffer ssbo2 {
 	Vertex vertices[];
@@ -28,5 +29,8 @@ void main()
 	gl_Position = u_proj * u_view * u_model * vec4(v.pos, 1);
 	a_uv.x = v.uv_x;
 	a_uv.y = v.uv_y;
-	a_normal = v.normal;
+	
+	a_normal = mat3(transpose(inverse(u_model))) * v.normal;
+	
+	a_frag_pos = vec3(u_model * vec4(v.pos, 1.0f));
 }

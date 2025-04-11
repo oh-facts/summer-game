@@ -209,6 +209,9 @@ render_submit :: (passes : Pass_List) {
 	glViewport(0, 0, xx win_size.x, xx win_size.y);
 	glClearColor(0.2, 0.2, 0.3, 1.0);
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	// passes
@@ -257,9 +260,9 @@ render_submit :: (passes : Pass_List) {
 				
 				case .GLTF_Scene;
 				
-				glEnable(GL_CULL_FACE);
-				glCullFace(GL_BACK);
-				glFrontFace(GL_CCW);
+				//glEnable(GL_CULL_FACE);
+				//glCullFace(GL_BACK);
+				//glFrontFace(GL_CCW);
 				
 				shader := r_state.vf_shaders[VF_Shaders.Mesh];
 				
@@ -287,7 +290,9 @@ render_submit :: (passes : Pass_List) {
 						
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, vertex_buffer);
 						
-						glUniformMatrix4fv(model_loc, 1, GL_TRUE, *mesh.transform.coef[0][0]);
+						model_mat := scene.xform * mesh.transform;
+						
+						glUniformMatrix4fv(model_loc, 1, GL_TRUE, *model_mat.coef[0][0]);
 						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
 						
 						for 0 .. mesh.num_primitives - 1 {

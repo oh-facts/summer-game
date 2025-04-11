@@ -1,3 +1,11 @@
+// Read this.
+// Since some of our artists use blockbench.
+// The model needs to be opened in blender and shaded smooth
+// However, the faces in blockbench aren't joined together
+// so first combine all vertices, then smooth shade
+// I am sure there is a python (ew) script that can do this.
+// https://github.com/JannisX11/blockbench/issues/2024
+
 Primitive :: struct {
 	start : u32;
 	count : u32;
@@ -38,6 +46,7 @@ GLTF_Scene :: struct {
 	
 	meshes : *Mesh;
 	num_meshes : u64;
+	xform := Matrix4_Identity;
 };
 
 GLTF_It :: struct {

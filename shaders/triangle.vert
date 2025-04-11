@@ -6,6 +6,8 @@ uniform mat4 u_proj;
 flat out uvec2 a_tex_id;
 flat out vec4 a_color;
 out vec2 a_uv;
+out vec3 a_normal;
+out vec3 a_frag_pos;
 
 struct Vertex2
 {
@@ -50,6 +52,10 @@ void main()
 	Vertex2 v = vertices[gl_VertexID];
 	vec4 pos = vec4(v.pos, 0, 1);
 	
+	a_normal = mat3(transpose(inverse(obj.model))) * vec3(0, 0, 1);
+	
+	a_frag_pos = vec3(obj.model * vec4(v.pos, 0, 1.0f));
+	
 	a_uv = v.uv;
 	a_uv.y = 1 - a_uv.y;
 	a_tex_id = obj.tex_id;
@@ -58,7 +64,6 @@ void main()
 }
 
 /*
-
 	Vertex2 vertices[] = 
 	{
 		{{-0.5, -0.5}, {0, 0}},
@@ -69,5 +74,4 @@ void main()
 		{{0.5, -0.5}, {1, 0}},
 		{{0.5, 0.5}, {1, 1}},
 	};
-	
 */

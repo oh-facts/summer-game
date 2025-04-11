@@ -38,6 +38,7 @@ temp/
 art.txt
 scratch.c
 *.zip
+*.blend1
 
 // macos
 .DS_Store

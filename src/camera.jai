@@ -8,8 +8,8 @@ Camera :: struct
 	ROTATION_SPEED :: 0.3;
 	ROTATION_SMOOTHING :: 0.3;
 	
-	position : Vector3 = .{0.5, 0.5, 0.5};
-	euler_angles : Vector3;
+	position : Vector3 = .{1.5, 0.46, -0.34};
+	euler_angles : Vector3 = .{-0.15, 0.06, 0};
 	rotation : Quaternion;
 	rotation_input : Vector2;
 	fov := 60.0;
