@@ -1,3 +1,8 @@
+// NOTE(mizu): Render text. Use a hashmap
+// Then do Entity Picking
+// Then experiment with more map work or work on lighting / shadows, etc.
+// At some point raycast for basic physics
+
 #import "Basic";
 #import "System";
 #import "String";
@@ -53,49 +58,21 @@ main :: () {
 	
 	render_init();
 	
-	// load 3d model
-	arena := arena_init();
-	forest, thing, sponza: GLTF_Scene;
+	arena = arena_init();
+	
+	// load test tex
 	{
-		//filename := tprint("%/%", art_folder, "duck/model.gltf ");
-		//filename := tprint("%/%", art_folder, "sponza/Sponza.gltf ");
-		
-		filename := tprint("%/%", art_folder, "aos/model2.gltf");
-		thing = gltf_loadMesh(arena, filename);
-		gltf_upload(arena, *thing);
+		bmp_tex = load_tex("psy_man.png");
+		grass_tex = load_tex("grass.png", .Linear);
+		tree_tex = load_tex("tree.png");
+		altar_tex = load_tex("altar/altar.png");
 	}
 	
+	// load test gltf models
 	{
-		filename := tprint("%/%", art_folder, "forest/model.gltf");
-		forest = gltf_loadMesh(arena, filename);
-		gltf_upload(arena, *forest);
-	}
-	
-	if 0 {
-		filename := tprint("%/%", art_folder, "sponza/Sponza.gltf");
-		sponza = gltf_loadMesh(arena, filename);
-		gltf_upload(arena, *sponza);
-	}
-	
-	{
-		filename := tprint("%/%", art_folder, "psy_man.png");
-		data := read_entire_file(filename);
-		bmp := bitmap(data);
-		bmp_tex = image(bmp);
-	}
-	
-	{
-		filename := tprint("%/%", art_folder, "grass.png");
-		data := read_entire_file(filename);
-		bmp := bitmap(data);
-		grass_tex = image(bmp, .Linear);
-	}
-	
-	{
-		filename := tprint("%/%", art_folder, "tree.png");
-		data := read_entire_file(filename);
-		bmp := bitmap(data);
-		tree_tex = image(bmp);
+		thing = load_gltf("aos/model2.gltf");
+		forest = load_gltf("forest/model.gltf");
+		//sponza = load_gltf("sponza/Sponza.gltf");
 	}
 	
 	delta : float;
@@ -105,7 +82,7 @@ main :: () {
 	freq := get_perf_freq();
 	
 	toggle_cursor(xx 0);
-	
+	load_cubemap_tex();
 	quit := false;
 	while !quit {
 		counter += delta;
@@ -142,39 +119,9 @@ main :: () {
 		update_flying_camera(*camera, delta);
 		
 		passes : Pass_List;
+		draw_forest_test_scene(*passes);
 		
-		{
-			draw_tree(*passes, .{1.6, 0.65, -1});
-		}
-		
-		{
-			{
-				model := Matrix4_Identity;
-				
-				euler : Vector2;
-				euler.x = counter;
-				//euler.y = counter;
-				yaw : Quaternion;
-				set_from_axis_and_angle (*yaw, 0, -1, 0, euler.x);
-				pitch : Quaternion;
-				set_from_axis_and_angle (*pitch, -1, 0, 0, euler.y);
-				rotation := yaw * pitch;
-				
-				model = translate(model, .{1.05, 0.12, -0.75});
-				model = rotate(model, rotation);
-				model = scale(model, .{0.08, 0.08, 0.08});
-				thing.xform = model;
-			}
-			
-			push_gltf_scene(*passes, thing);
-			
-			
-			{
-				forest.xform = scale(Matrix4_Identity, .{0.5, 0.5, 0.5});
-				push_gltf_scene(*passes, forest);
-			}
-			//push_gltf_scene(*passes, sponza);
-		}
+		//push_gltf_scene(*passes, sponza);
 		
 		render_submit(passes);
 		dc := GetDC(the_window);
@@ -214,9 +161,121 @@ toggle_cursor :: (show : s32) {
 	}
 } 
 
-bmp_tex, grass_tex, tree_tex : Image;
+bmp_tex, grass_tex, tree_tex, altar_tex: Image;
+forest, thing, sponza : GLTF_Scene;
+arena : *Arena;
 
 draw_tree :: (passes : *Pass_List, pos : Vector3) {
 	push_quad(passes, pos, .{}, .{1, 1}, COLOR_WHITE, tree_tex);
 	push_quad(passes, pos, .{90 * PI/180, 0, 0}, .{1, 1}, COLOR_WHITE, tree_tex);
+}
+
+draw_forest_test_scene :: (passes : *Pass_List) {
+	
+	// tree
+	{
+		draw_tree(passes, .{1.6, 0.65, -1});
+	}
+	
+	// demon altar thing
+	{
+		push_quad(passes, .{0.91, 0.06, 1.6}, .{0, 89 * PI/180, 0}, .{0.5, 0.5}, COLOR_WHITE, altar_tex);
+	}
+	
+	// terrain
+	{
+		forest.xform = scale(Matrix4_Identity, .{0.5, 0.5, 0.5});
+		push_gltf_scene(passes, forest);
+	}
+	
+	// the thing
+	{
+		model := Matrix4_Identity;
+		
+		euler : Vector2;
+		euler.x = counter;
+		//euler.y = counter;
+		yaw : Quaternion;
+		set_from_axis_and_angle (*yaw, 0, -1, 0, euler.x);
+		pitch : Quaternion;
+		set_from_axis_and_angle (*pitch, -1, 0, 0, euler.y);
+		rotation := yaw * pitch;
+		
+		model = translate(model, .{1.05, 0.12, -0.75});
+		model = rotate(model, rotation);
+		model = scale(model, .{0.08, 0.08, 0.08});
+		thing.xform = model;
+		
+		push_gltf_scene(passes, thing);
+	}
+}
+
+// NOTE(mizu): bmp is leaked
+load_tex :: (path : string, params : Tex_Params = .Nearest) -> Image {
+	filename := tprint("%/%", art_folder, path);
+	data := read_entire_file(filename);
+	bmp := bitmap(data);
+	return image(bmp, params);
+}
+
+load_cubemap_tex :: () {
+	
+	filenames : []string = .[
+													 "right.jpg",
+													 "left.jpg",
+													 "top.jpg",
+													 "bottom.jpg",
+													 "front.jpg",
+													 "back.jpg",
+													 ];
+	id : GLuint;
+	glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, *id);
+	
+	{
+		filename := tprint("%/skybox/% ", art_folder, filenames[0]);
+		
+		size := bmp_dim_from_filename(filename);
+		glTextureStorage2D(id, 1, GL_RGB8, xx size.x, xx size.y);
+	}
+	
+	stbi_set_flip_vertically_on_load(0);
+	
+	for 0 .. 6 - 1 {
+		filename := tprint("%/skybox/% ", art_folder, filenames[it]);
+		
+		width, height, nrChannels : s32;
+		
+		data := stbi_load(filename.data, *width, *height, *nrChannels, 0);
+		
+		if data {
+			glTextureSubImage3D(id, 0, 0, 0, xx it, xx width, xx height, 1, GL_RGB, GL_UNSIGNED_BYTE, data);
+			stbi_image_free(data);
+		}
+		else {
+			assert(xx 0, "cubemap not found");
+		}
+	}
+	
+	glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTextureParameteri(id, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	
+	resident := glGetTextureHandleARB(id);
+	
+	glMakeTextureHandleResidentARB(resident);
+	
+	cubemap_tex = resident;
+	
+	stbi_set_flip_vertically_on_load(1);
+	
+}
+
+load_gltf :: (path : string) -> GLTF_Scene {
+	out : GLTF_Scene;
+	filename := tprint("%/%", art_folder, path);
+	out = gltf_loadMesh(arena, filename);
+	gltf_upload(arena, *out);
+	return out;
 }

@@ -2,6 +2,7 @@ VF_Shaders :: enum {
 	Quad;
 	Light;
 	Mesh;
+	Skybox;
 	Count;
 }
 
@@ -19,7 +20,7 @@ r_state : struct {
 	white_tex : Image;
 }
 
-vf_shader_paths :[VF_Shaders.Count]string: .["triangle", "light", "mesh"];
+vf_shader_paths :[VF_Shaders.Count]string: .["triangle", "light", "mesh", "skybox"];
 
 make_ssbo :: (size : u64) -> GLuint {
 	ssbo : GLuint;
@@ -203,6 +204,8 @@ render_init :: () {
 	r_state.white_tex = image(white_bmp);
 }
 
+cubemap_tex : GLuint64;
+
 render_submit :: (passes : Pass_List) {
 	win_size := get_window_size(the_window);
 	
@@ -213,6 +216,33 @@ render_submit :: (passes : Pass_List) {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
+	// skybox
+	{
+		glDepthMask(GL_FALSE);
+		shader := r_state.vf_shaders[VF_Shaders.Skybox];
+		
+		glUseProgram(shader);
+		
+		proj_loc := glGetUniformLocation(shader, "u_proj");
+		view_loc := glGetUniformLocation(shader, "u_view");
+		
+		view := make_matrix4(make_matrix3(camera.view_matrix));
+		
+		proj := Matrix4_Identity;
+		proj = make_projection_matrix(60 * PI / 180.0, win_size.x / (cast(float) win_size.y), 0.001, 1000);
+		
+		glUniformMatrix4fv(view_loc, 1, GL_TRUE, *view.coef[0][0]);
+		glUniformMatrix4fv(proj_loc, 1, GL_TRUE, *proj.coef[0][0]);
+		
+		loc := glGetUniformLocation(shader, "u_skybox");
+		
+		l, r := uvec2_from_u64(cubemap_tex);
+		glUniform2ui(loc, l, r);
+		
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glDepthMask(GL_TRUE);
+	}
 	
 	// passes
 	{
@@ -260,9 +290,9 @@ render_submit :: (passes : Pass_List) {
 				
 				case .GLTF_Scene;
 				
-				//glEnable(GL_CULL_FACE);
-				//glCullFace(GL_BACK);
-				//glFrontFace(GL_CCW);
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_BACK);
+				glFrontFace(GL_CCW);
 				
 				shader := r_state.vf_shaders[VF_Shaders.Mesh];
 				
@@ -278,6 +308,42 @@ render_submit :: (passes : Pass_List) {
 				
 				glUniformMatrix4fv(view_loc, 1, GL_TRUE, *camera.view_matrix.coef[0][0]);
 				glUniformMatrix4fv(proj_loc, 1, GL_TRUE, *proj.coef[0][0]);
+				
+				// dir light dir
+				{
+					loc := glGetUniformLocation(shader, "u_dir_light.dir");
+					
+					v := Vector3.{-0.2, -1, -0.3};
+					glUniform3fv(loc, 1, *v.component[0]);
+				}
+				
+				// dir light ambient
+				{
+					loc := glGetUniformLocation(shader, "u_dir_light.ambient");
+					v := Vector3.{0.1, 0.1, 0.1};
+					glUniform3fv(loc, 1, *v.component[0]);
+				}
+				
+				// dir light diffuse
+				{
+					loc := glGetUniformLocation(shader, "u_dir_light.diffuse");
+					v := Vector3.{0.5, 0.5, 0.5};
+					glUniform3fv(loc, 1, *v.component[0]);
+				}
+				
+				// point light diffuse
+				{
+					loc := glGetUniformLocation(shader, "u_point_lights[0].diffuse");
+					v := Vector3.{0.5, 0.5, 0.5};
+					glUniform3fv(loc, 1, *v.component[0]);
+				}
+				
+				// point light pos
+				{
+					loc := glGetUniformLocation(shader, "u_point_lights[0].pos");
+					v := Vector3.{0.91, 1, 1.6};
+					glUniform3fv(loc, 1, *v.component[0]);
+				}
 				
 				for 0 .. pass.scene_count - 1 {
 					scene := pass.scenes[it];

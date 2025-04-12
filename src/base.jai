@@ -243,6 +243,26 @@ Bitmap :: struct {
 	n : s32;
 }
 
+bmp_dim_from_filename :: (name : string) -> Vector2i {
+	
+	out : Vector2i;
+	comp : int;
+	
+	stbi_info(name.data, *out.x, *out.y, xx *comp);
+	
+	return out;
+}
+
+bmp_dim_from_memory :: (data : string) -> Vector2i {
+	
+	out : Vector2i;
+	comp : int;
+	
+	stbi_info_from_memory(xx data.data, xx data.count, *out.x, *out.y, xx *comp);
+	
+	return out;
+}
+
 bitmap :: (data : string) -> Bitmap {
 	out : Bitmap;
 	stbi_set_flip_vertically_on_load(1);

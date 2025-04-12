@@ -99,14 +99,15 @@ gltf_traverseNode :: (it : *GLTF_It, node : *cgltf_node) {
 			
 			p := mesh.primitives + i;
 			
-			if node_prim.material.pbr_metallic_roughness.base_color_texture.texture {
-				p.base_tex_index = cgltf_texture_index(it.data, node_prim.material.pbr_metallic_roughness.base_color_texture.texture); 
+			if node_prim.material {
+				if node_prim.material.pbr_metallic_roughness.base_color_texture.texture {
+					p.base_tex_index = cgltf_texture_index(it.data, node_prim.material.pbr_metallic_roughness.base_color_texture.texture); 
+				}
+				
+				if node_prim.material.normal_texture.texture {
+					//p.normal_tex_index = cgltf_texture_index(it.data, node_prim.material.normal_texture.texture);
+				}
 			}
-			
-			if node_prim.material.normal_texture.texture {
-				//p.normal_tex_index = cgltf_texture_index(it.data, node_prim.material.normal_texture.texture);
-			}
-			
 			index_attrib := node_prim.indices;
 			
 			p.start = xx init_index;
